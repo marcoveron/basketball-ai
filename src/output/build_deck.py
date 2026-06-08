@@ -180,12 +180,9 @@ def build(R: Path, out: Path, repo_url: str = "github.com/marcoveron/basketball-
         0.9, 4.45, 11.3, 0.5, 14, MUT, italic=True)
     chip(s, "PROOF OF CONCEPT", 0.9, 5.25, ACC, w=2.1)
     notes(s, """
-Welcome. This project is an AI system that turns ordinary amateur basketball footage into
-the kind of structured analytics that, until now, only professional teams could afford.
-Our test case is the final of a Taiwan 3x3 tournament — a single 720p broadcast clip, no
-sensors, no manual tagging. Everything you'll see was produced automatically from that one
-video file. I'll walk through the problem, how the system works, the results, and — just as
-importantly — where we were honest about what this footage can and can't support.
+- Turn ordinary amateur footage into pro-level analytics.
+- Test case: ONE 720p Taiwan 3x3 final clip — no sensors, no manual tagging.
+- Everything you'll see was produced automatically from that single file.
 """)
     footer(s, n, TOTAL)
 
@@ -209,13 +206,9 @@ importantly — where we were honest about what this footage can and can't suppo
         ("Per-player stats · shot maps · auto-highlights · a shareable dashboard", 17, INK, True),
     ])
     notes(s, """
-Here's the gap. A professional team walks off the court with shot charts, efficiency
-numbers and tracking data. An amateur team walks off with the score on a phone photo.
-But all of that information is already present in the footage — every shot and every
-movement is there in the pixels. The only thing missing is something to extract it
-automatically. Manual video tagging exists, but it's slow and expensive and nobody does it
-for a Tuesday-night pickup game. Our goal, on the right: take one raw video in, and give
-back professional-grade outputs.
+- Pros get shot charts & tracking; amateurs get only the final score.
+- The data is already in the pixels — nobody extracts it (manual tagging is slow & costly).
+- Goal: one raw video in -> pro-grade outputs.
 """)
     footer(s, n, TOTAL)
 
@@ -235,13 +228,8 @@ back professional-grade outputs.
         p = panel(s, x + i * (w + gap), 2.5, w, 3.2)
         panel_text(p, [(k, 14, c, True), ("", 8, INK, False), (body, 15, INK, False)])
     notes(s, """
-Our answer is a single pipeline. You feed it a raw mp4 and it runs four stages end to end.
-First, detection: a trained model finds the ball, the basket and every player in every
-frame. Second, identity: we read jersey numbers with OCR and track each player across the
-game. Third — and this is the clever part I'll come back to — we read the scoreboard itself
-to recover every made shot. And fourth, output: it assembles a dashboard, player cards, a
-shot-distribution map and automatically cut highlight clips. No human in the loop after you
-press go.
+- One pipeline, four stages: detect -> identify -> read the scoreboard -> output.
+- No human in the loop after you press go.
 """)
     footer(s, n, TOTAL)
 
@@ -262,13 +250,8 @@ press go.
         panel_text(p, [(k, 14, c, True), (body, 15, INK, False)], pad=0.18)
         y += 1.28
     notes(s, """
-Architecturally the system is four layers, each building on the one below. Layer one is
-court modeling and detection — finding the hoop and the players and setting up a spatial
-frame of reference. Layer two is identity — who is who — driven mainly by reading jersey
-numbers, with face recognition as a backup. Layer three is behavior recognition — turning
-raw positions into basketball events: shots and rebounds. And layer four is output — the
-heat maps, growth curves, highlight clips and dashboard that a player actually sees. This
-mirrors the original product spec one-to-one.
+- Four layers: detection -> identity -> behavior (shots/rebounds) -> output.
+- Mirrors the original product spec one-to-one.
 """)
     footer(s, n, TOTAL)
 
@@ -292,14 +275,8 @@ mirrors the original product spec one-to-one.
         ("Highlights — ffmpeg cuts & captions one clip per made shot, then stitches a full reel.", INK, False),
     ], 0.62, 3.2, 12.1, 3.2, size=16, gap=12)
     notes(s, """
-A quick look under the hood for the technical audience. Detection uses a YOLO model we
-trained on labelled basketball data, with three classes — ball, basket and person — run on
-the full-resolution frames. A scene filter throws away replays and close-ups and keeps the
-roughly eighty percent of frames coming from the main game camera. Both the jersey numbers
-and the scoreboard are read with PaddleOCR on the GPU, using tight per-region crops because
-the numbers are tiny. And the highlights are cut and captioned with ffmpeg. Off-the-shelf
-components, but the way they're wired together is what makes it work on messy amateur
-footage.
+- Detection (YOLO) -> scene filter (keeps ~81% main-camera frames) -> OCR (jerseys + scoreboard) -> highlights (ffmpeg).
+- Off-the-shelf parts, wired together to survive messy amateur footage.
 """)
     footer(s, n, TOTAL)
 
@@ -336,19 +313,10 @@ footage.
     txt(s, "Validation metrics on 981 held-out images — strong accuracy after only a few epochs.",
         0.62, 6.35, 11.8, 0.4, 13, MUT, italic=True)
     notes(s, """
-This is the machine-learning core. The object detector is a YOLO11-small model. We did NOT
-train it from scratch — we used transfer learning: we started from weights already
-pre-trained on COCO, which has eighty everyday object classes, and fine-tuned it on
-basketball data with just three classes we care about — ball, basket and person. Why
-fine-tune at all? Because COCO has no 'basket' or hoop class, and its generic 'sports ball'
-detector is weak on a small, fast-moving basketball. The training data is a public Roboflow
-Universe dataset — 'basketball-detection', about seven and a half thousand labelled images,
-split into train, validation and test. We trained at 512-pixel input on a single consumer
-RTX 4050 GPU. And here's the payoff of transfer learning: because the backbone already knew
-generic visual features, it converged in only a few epochs and still reached a mean average
-precision at fifty percent IoU of about zero-point-nine-two, with precision around
-ninety-four percent and recall around eighty-six. Those are the validation numbers on
-nearly a thousand held-out images.
+- Detector = YOLO11s, fine-tuned (transfer learning) from COCO down to 3 classes: ball / basket / person.
+- Why fine-tune: COCO has no 'basket' class and detects the small fast ball poorly.
+- Data: public Roboflow set, ~7,500 labelled images.
+- Converged in just a few epochs -> mAP@50 ~0.92, precision 0.94, recall 0.86 (that's transfer learning paying off).
 """)
     footer(s, n, TOTAL)
 
@@ -369,15 +337,8 @@ nearly a thousand held-out images.
         panel_text(p, [(k, 14, c, True), (body, 14.5, INK, False)], pad=0.18)
         y += 1.28
     notes(s, """
-Zooming out, here's the full toolkit — four learned or model-based components working
-together. Detection is the YOLO model we just discussed. Tracking is ByteTrack, which gives
-each player a persistent ID across frames — though camera cuts fragment those IDs, which is
-why we aggregate statistics by jersey number rather than by raw track. Recognition is
-PaddleOCR running on the GPU, used twice — for jersey numbers and for the scoreboard.
-And motion is a Kalman filter, a classic constant-acceleration state estimator, that smooths
-the ball's path and predicts through the frames where the detector loses it. So it's not a
-single model — it's a pipeline of complementary techniques, each chosen for a specific
-sub-problem.
+- Four components: YOLO (detect), ByteTrack (track), PaddleOCR (read numbers + scoreboard), Kalman filter (smooth the ball).
+- Not a single model — a pipeline of complementary techniques, one per sub-problem.
 """)
     footer(s, n, TOTAL)
 
@@ -409,16 +370,9 @@ sub-problem.
         ("Every shot carries its value and its clock time — far more reliable than guessing makes from the ball.", 14, INK, False),
     ])
     notes(s, """
-This is the idea I'm most proud of. The obvious way to detect a made shot is to track the
-ball into the hoop — but on this footage the ball track is noisy, players occlude it, and
-circular ad logos cause false positives. So we flipped the problem. In 3x3 basketball the
-scoreboard encodes every make for us: a plus-one is a basket from inside the arc, a plus-two
-is from outside, and it changes at the exact moment of the score. So we just read the
-scoreboard twice a second and reconstruct the game. The result on the right: twelve made
-shots, nine ones and three twos, and crucially it reconciles exactly to the final score of
-eleven-ten. When your reconstruction matches the official score perfectly, you know your
-shot data is solid. The three-three is the score that was already on the board when the clip
-starts, forty seconds in.
+- Detecting makes from the ball is unreliable (occlusions, ad-logo false positives).
+- So we read the scoreboard instead: +1 = inside-arc make, +2 = outside, with exact clock time.
+- Result: 12 shots, and it reconciles EXACTLY to the 11-10 final -> the shot data is solid.
 """)
     footer(s, n, TOTAL)
 
@@ -432,11 +386,8 @@ starts, forty seconds in.
         ("Final: Home 11 – 10 Away.", INK, True),
     ], 9.45, 2.4, 3.4, 3.5, size=15, gap=12)
     notes(s, """
-Now the results, all generated from that one video. This is the game flow — the score of
-both teams over time, rebuilt entirely from reading the scoreboard. Each dot is a made shot,
-with the big dots being two-pointers. You can read the whole story of the game off this
-chart: who led, the runs, the close finish at eleven-ten. A coach or player gets this
-automatically, with no tagging.
+- Score over time for both teams, rebuilt purely from scoreboard OCR.
+- Big dots = 2-pointers. The whole story of the game, automatically.
 """)
     footer(s, n, TOTAL)
 
@@ -456,14 +407,9 @@ automatically, with no tagging.
         ("The broadcast camera pans & zooms, so we don't fake pin-point xy — we show the zone the data truly supports.", 14, INK, False),
     ])
     notes(s, """
-This is the flagship deliverable from the product spec: the shot-distribution map. Each
-marker is a made shot on a 3x3 half-court, coloured by team and labelled by value. I want to
-be precise about what's real here, because it matters. The zone — inside versus outside the
-arc — is real, exact data: it comes directly from whether the scoreboard ticked up by one or
-two. The exact spot within a zone is illustrative, because the broadcast camera constantly
-pans and zooms, so we can't recover true court coordinates. Rather than invent fake precise
-positions, we show the fidelity the footage actually supports and we say so on the slide.
-That honesty is a feature, not an apology.
+- Each marker = a made shot on a 3x3 half-court.
+- Zone (inside vs outside the arc) is REAL scoreboard data — exact.
+- Exact spot is illustrative: the camera pans & zooms, so we don't fake coordinates.
 """)
     footer(s, n, TOTAL)
 
@@ -485,13 +431,9 @@ That honesty is a feature, not an apology.
         ("(Points scored during the analyzed footage; final score 11–10 adds the 3–3 baseline.)", 12, MUT, False, True),
     ])
     notes(s, """
-The same shot data, turned into team insight. Home scored on seven makes for eight points;
-Away on five makes for seven points. But look at the shot mix: forty percent of Away's
-makes were two-pointers, versus only fourteen percent for Home. That's a genuine,
-data-backed difference in strategy — Away leaned on the outside shot. This is exactly the
-kind of insight amateur teams never normally get. One note for clarity: these are the points
-scored inside the footage; the eleven-ten final adds the three-three that was already on the
-board when the clip began.
+- In-footage points: Home 8, Away 7.
+- Away leaned on the 2: 40% of their makes vs 14% for Home — a real strategy signal.
+- The 11-10 final adds the 3-3 that was already on the board when the clip starts.
 """)
     footer(s, n, TOTAL)
 
@@ -510,12 +452,8 @@ board when the clip began.
         ("In the live dashboard the cards are interactive — click one to reveal its stats.", ACC, True),
     ], 0.62, 5.3, 12.1, 1.6, size=15, gap=8)
     notes(s, """
-Identity. For each strongly-seen player the system builds a card: a real thumbnail cropped
-from the video, the jersey number, a confidence tag, and the court-presence stats we can
-attribute reliably — how long they were tracked, how many times we read their number, and so
-on. In the live dashboard these cards are interactive: you click a player to reveal their
-stats, rather than dumping everything at once. It feels like a modern sports app, and it's
-all driven by the OCR and tracking under the hood.
+- Each player = jersey-number OCR + tracking, with a real thumbnail, confidence tag and time on court.
+- In the live dashboard the cards are interactive — click one to reveal its stats.
 """)
     footer(s, n, TOTAL)
 
@@ -532,11 +470,8 @@ all driven by the OCR and tracking under the hood.
         ("Zero manual editing — the data decides where every clip starts and ends.", ACC, True),
     ], 0.62, 4.4, 12.1, 2.2, size=16, gap=12)
     notes(s, """
-Because we know the exact clock time of every made shot, we can auto-edit. The system cuts
-one highlight clip per make — six seconds before to three after — burns in a team-coloured
-caption, and stitches them into a full-game reel. Twelve clips, one reel, no human editor.
-The data itself decides where every clip begins and ends. This is the kind of shareable
-content that gets players to actually come back and use the product.
+- We know each shot's exact time -> auto-cut one clip per make, plus a full reel.
+- Team-coloured captions burnt in, zero manual editing.
 """)
     footer(s, n, TOTAL)
 
@@ -555,15 +490,8 @@ content that gets players to actually come back and use the product.
         panel_text(p, [(k, 15, GOLD, True), (body, 13.5, INK, False)], pad=0.16)
         y += 1.14
     notes(s, """
-I want to spend a moment here because this slide is what separates a demo from real
-engineering. We were rigorous about what the footage does NOT support. We cannot give
-pin-point court coordinates or a true heat map, because the camera never holds still. We
-cannot reliably attribute each individual shot to a specific player — we tested it, and it
-failed often enough that shipping it would be dishonest. The jersey numbers themselves are
-only about twenty pixels tall, so they're approximate. And we can't compute shooting
-percentages because we don't detect misses. Rather than fake any of this, we report what's
-solid and clearly label what's illustrative. A system that knows its own limits is one you
-can trust.
+- What the footage does NOT support: pin-point coordinates (panning camera), per-player shot attribution, exact jersey numbers (resolution), FG%/eFG% (no misses).
+- We report what's solid and clearly label what's illustrative.
 """)
     footer(s, n, TOTAL)
 
@@ -597,15 +525,9 @@ can trust.
         ("The pipeline is already built to produce these — it's gated on input quality, not on the software.", 14, MUT, False, True),
     ])
     notes(s, """
-So what's next, and what would unlock the rest of the product spec? Two separate things, and
-it's important not to conflate them. One: a higher-resolution source fixes the jersey
-numbers — that's purely an identity problem. Two: a fixed, calibrated court camera — one that
-doesn't pan or zoom — unlocks true shot positions, heat maps and per-player attribution.
-That's a geometry problem. Resolution alone does not solve the court-space metrics; you need
-the stable camera too. With those two inputs, the full set of spec metrics opens up:
-effective field-goal percentage, rebound control rate, catch-and-shoot versus off-the-dribble,
-growth curves across games. And the key point — the software is already built to produce
-these. We're gated on input quality, not on engineering.
+- Two independent needs: higher-res -> reliable numbers; a fixed, calibrated camera -> true court positions.
+- Then the full spec opens up: eFG%, rebound rate, catch-&-shoot, growth curves.
+- The software is already built — it's gated on input quality, not code.
 """)
     footer(s, n, TOTAL)
 
@@ -623,13 +545,9 @@ these. We're gated on input quality, not on engineering.
     ], 0.9, 3.9, 11.5, 2.0, size=18, gap=12)
     txt(s, "Live demo:  runs720/dashboard.html   ·   Thank you", 0.9, 6.2, 11.5, 0.5, 16, ACC, bold=True)
     notes(s, """
-To wrap up. We set out to turn one raw amateur game video into the kind of analytics only
-pros get — and we have a working pipeline that does it. We recover every made shot and
-reconcile exactly to the final score; we generate a game-flow view, a shot map, team
-analytics, interactive player cards and a dozen auto-cut highlights. And we did it honestly:
-the system knows what the footage supports and what it doesn't, with a clear path to the full
-metric set once the input quality improves. The best part is the live dashboard — I'd love
-to show it to you now. Thank you.
+- A working pipeline: raw 3x3 video -> shareable analytics + highlights.
+- Honest about its limits, with a clear path forward.
+- Let me show you the live dashboard.
 """)
     footer(s, n, TOTAL)
 
@@ -665,11 +583,9 @@ to show it to you now. Thank you.
     ])
     txt(s, "Thank you — questions welcome.", 0.62, 6.45, 11.5, 0.5, 16, ACC, bold=True)
     notes(s, """
-Finally, this is open. The complete codebase is on GitHub at the address shown — the full
-pipeline, the dashboard generator, the highlight auto-editor, even the generator for these
-very slides, plus a README with setup and usage. It's reproducible: clone it, install the
-requirements, point it at a video and run. Everything you've seen today came out of that
-repository, from one raw video file. Thank you very much — I'm happy to take any questions.
+- Fully open-source on GitHub: pipeline, dashboard, highlight editor, even this deck generator.
+- Reproducible — clone, install, run.
+- Thank you — questions welcome.
 """)
     footer(s, n, TOTAL)
 
