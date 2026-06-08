@@ -85,6 +85,7 @@ def panel_text(shp, lines, pad=0.16):
         text, size, color, bold = ln[0], ln[1], ln[2], ln[3]
         italic = ln[4] if len(ln) > 4 else False
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.alignment = PP_ALIGN.LEFT          # autoshape's 1st paragraph defaults to centre
         p.space_after = Pt(4); p.line_spacing = 1.05
         r = p.add_run(); r.text = text
         r.font.size = Pt(size); r.font.bold = bold; r.font.italic = italic
@@ -163,7 +164,7 @@ def chip(s, label, l, t, color, w=1.0):
 def build(R: Path, out: Path, repo_url: str = "github.com/marcoveron/basketball-ai") -> None:
     prs = Presentation()
     prs.slide_width = Inches(13.333); prs.slide_height = Inches(7.5)
-    TOTAL = 15
+    TOTAL = 17
     n = 0
 
     # 1 — TITLE -------------------------------------------------------------
@@ -302,7 +303,85 @@ footage.
 """)
     footer(s, n, TOTAL)
 
-    # 6 — KEY INSIGHT: scoreboard = ground truth ---------------------------
+    # 6 — ML: DETECTION MODEL / FINE-TUNING --------------------------------
+    s = slide(prs); n += 1
+    header(s, "Machine learning", "The detector: fine-tuning YOLO11")
+    panel(s, 0.62, 2.0, 6.0, 3.45)
+    p = s.shapes[-1]
+    panel_text(p, [
+        ("TRANSFER LEARNING", 13, ACC, True),
+        ("", 6, INK, False),
+        ("Base: YOLO11s — pre-trained on COCO (80 classes)", 15, INK, True),
+        ("Re-trained on basketball footage → 3 custom classes:", 14, INK, False),
+        ("ball   ·   basket   ·   person", 16, GOLD, True),
+        ("", 6, INK, False),
+        ("Why fine-tune? COCO has no 'basket' class and detects a small, fast ball poorly. A few epochs fixed both — the pre-trained backbone already knows generic visual features.", 13.5, MUT, False),
+    ])
+    panel(s, 6.9, 2.0, 5.83, 3.45, fill=RGBColor(0x12, 0x17, 0x1f))
+    p = s.shapes[-1]
+    panel_text(p, [
+        ("TRAINING DATA", 13, ACC, True),
+        ("", 4, INK, False),
+        ("Roboflow Universe — “basketball-detection-dn6fg” (v4, CC BY 4.0)", 13.5, INK, True),
+        ("", 4, INK, False),
+        ("~7,500 labelled images", 19, INK, True),
+        ("6,017 train   ·   981 val   ·   488 test", 14, MUT, False),
+        ("", 6, INK, False),
+        ("imgsz 512  ·  batch 8  ·  lr0 0.01  ·  optimizer auto", 13.5, INK, False),
+        ("Trained on a single consumer GPU (RTX 4050)", 13.5, MUT, False, True),
+    ])
+    chip(s, "mAP@50   0.92", 0.62, 5.75, ACC, w=2.7)
+    chip(s, "Precision   0.94", 3.55, 5.75, AWAY, w=2.7)
+    chip(s, "Recall   0.86", 6.48, 5.75, GOLD, w=2.7)
+    txt(s, "Validation metrics on 981 held-out images — strong accuracy after only a few epochs.",
+        0.62, 6.35, 11.8, 0.4, 13, MUT, italic=True)
+    notes(s, """
+This is the machine-learning core. The object detector is a YOLO11-small model. We did NOT
+train it from scratch — we used transfer learning: we started from weights already
+pre-trained on COCO, which has eighty everyday object classes, and fine-tuned it on
+basketball data with just three classes we care about — ball, basket and person. Why
+fine-tune at all? Because COCO has no 'basket' or hoop class, and its generic 'sports ball'
+detector is weak on a small, fast-moving basketball. The training data is a public Roboflow
+Universe dataset — 'basketball-detection', about seven and a half thousand labelled images,
+split into train, validation and test. We trained at 512-pixel input on a single consumer
+RTX 4050 GPU. And here's the payoff of transfer learning: because the backbone already knew
+generic visual features, it converged in only a few epochs and still reached a mean average
+precision at fifty percent IoU of about zero-point-nine-two, with precision around
+ninety-four percent and recall around eighty-six. Those are the validation numbers on
+nearly a thousand held-out images.
+""")
+    footer(s, n, TOTAL)
+
+    # 7 — ML: MODELS & METHODS AT A GLANCE ---------------------------------
+    s = slide(prs); n += 1
+    header(s, "The toolkit", "Models & methods")
+    methods = [
+        ("DETECTION  ·  YOLO11s (fine-tuned)", "Single-stage detector — finds the ball, basket and every player in each frame, in real time.", HOME),
+        ("TRACKING  ·  ByteTrack", "Multi-object tracker — assigns and persists a track ID per player across frames (we aggregate by jersey to beat fragmentation).", AWAY),
+        ("RECOGNITION  ·  PaddleOCR (GPU)", "Optical character recognition — reads jersey numbers and the on-screen scoreboard digits.", GOLD),
+        ("MOTION  ·  Kalman filter", "Constant-acceleration state estimator — smooths the ball trajectory and fills gaps where detection drops.", ACC),
+    ]
+    y = 2.0
+    for k, body, c in methods:
+        p = panel(s, 0.62, y, 12.1, 1.16)
+        barl = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.62), Inches(y), Inches(0.1), Inches(1.16))
+        _solid(barl, c); barl.line.fill.background(); barl.shadow.inherit = False
+        panel_text(p, [(k, 14, c, True), (body, 14.5, INK, False)], pad=0.18)
+        y += 1.28
+    notes(s, """
+Zooming out, here's the full toolkit — four learned or model-based components working
+together. Detection is the YOLO model we just discussed. Tracking is ByteTrack, which gives
+each player a persistent ID across frames — though camera cuts fragment those IDs, which is
+why we aggregate statistics by jersey number rather than by raw track. Recognition is
+PaddleOCR running on the GPU, used twice — for jersey numbers and for the scoreboard.
+And motion is a Kalman filter, a classic constant-acceleration state estimator, that smooths
+the ball's path and predicts through the frames where the detector loses it. So it's not a
+single model — it's a pipeline of complementary techniques, each chosen for a specific
+sub-problem.
+""")
+    footer(s, n, TOTAL)
+
+    # 8 — KEY INSIGHT: scoreboard = ground truth ---------------------------
     s = slide(prs); n += 1
     header(s, "Key insight", "In 3×3, the scoreboard IS the ground truth", color=GOLD)
     panel(s, 0.62, 2.0, 6.0, 4.1, fill=RGBColor(0x1f, 0x1a, 0x12), line=RGBColor(0x5a, 0x3a, 0x1a))
@@ -343,7 +422,7 @@ starts, forty seconds in.
 """)
     footer(s, n, TOTAL)
 
-    # 7 — RESULT: game flow -------------------------------------------------
+    # 9 — RESULT: game flow -------------------------------------------------
     s = slide(prs); n += 1
     header(s, "Results", "Game flow, reconstructed automatically")
     pic_fit(s, R / "chart_gameflow.png", 0.62, 1.95, 8.6, 4.6)
@@ -361,7 +440,7 @@ automatically, with no tagging.
 """)
     footer(s, n, TOTAL)
 
-    # 8 — RESULT: shot distribution map ------------------------------------
+    # 10 — RESULT: shot distribution map ------------------------------------
     s = slide(prs); n += 1
     header(s, "Results", "Shot-distribution map")
     pic_fit(s, R / "chart_shotchart.png", 0.62, 1.95, 7.6, 4.7)
@@ -388,7 +467,7 @@ That honesty is a feature, not an apology.
 """)
     footer(s, n, TOTAL)
 
-    # 9 — RESULT: team scoring / shot mix ----------------------------------
+    # 11 — RESULT: team scoring / shot mix ----------------------------------
     s = slide(prs); n += 1
     header(s, "Results", "Team scoring & shot mix")
     pic_fit(s, R / "chart_shotmix.png", 0.62, 1.95, 5.4, 4.6)
@@ -416,7 +495,7 @@ board when the clip began.
 """)
     footer(s, n, TOTAL)
 
-    # 10 — PLAYER CARDS -----------------------------------------------------
+    # 12 — PLAYER CARDS -----------------------------------------------------
     s = slide(prs); n += 1
     header(s, "Results", "Player identity cards")
     thumbs = [(5, "HIGH", ACC), (22, "HIGH", ACC), (12, "HIGH", ACC), (2, "MED", GOLD)]
@@ -440,7 +519,7 @@ all driven by the OCR and tracking under the hood.
 """)
     footer(s, n, TOTAL)
 
-    # 11 — HIGHLIGHTS -------------------------------------------------------
+    # 13 — HIGHLIGHTS -------------------------------------------------------
     s = slide(prs); n += 1
     header(s, "Results", "Auto-generated highlights")
     hts = sorted((R / "highlights" / "thumbs").glob("shot_*.png"))[:4]
@@ -461,7 +540,7 @@ content that gets players to actually come back and use the product.
 """)
     footer(s, n, TOTAL)
 
-    # 12 — LIMITATIONS ------------------------------------------------------
+    # 14 — LIMITATIONS ------------------------------------------------------
     s = slide(prs); n += 1
     header(s, "Engineering honesty", "What this footage does NOT support", color=GOLD)
     lims = [
@@ -488,7 +567,7 @@ can trust.
 """)
     footer(s, n, TOTAL)
 
-    # 13 — ROADMAP ----------------------------------------------------------
+    # 15 — ROADMAP ----------------------------------------------------------
     s = slide(prs); n += 1
     header(s, "Roadmap", "What better input unlocks")
     panel(s, 0.62, 2.0, 6.0, 4.1, fill=RGBColor(0x12, 0x1a, 0x14), line=RGBColor(0x2f, 0x6b, 0x3f))
@@ -530,7 +609,7 @@ these. We're gated on input quality, not on engineering.
 """)
     footer(s, n, TOTAL)
 
-    # 14 — CLOSING ----------------------------------------------------------
+    # 16 — CLOSING ----------------------------------------------------------
     s = slide(prs); n += 1
     band = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(0.22), Inches(7.5))
     _solid(band, ACC); band.line.fill.background(); band.shadow.inherit = False
@@ -554,7 +633,7 @@ to show it to you now. Thank you.
 """)
     footer(s, n, TOTAL)
 
-    # 15 — CODE & RESOURCES -------------------------------------------------
+    # 17 — CODE & RESOURCES -------------------------------------------------
     s = slide(prs); n += 1
     header(s, "Open source", "Code & resources")
     panel(s, 0.62, 2.0, 7.4, 4.1)
