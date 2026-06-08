@@ -1,0 +1,23 @@
+# Core data / plotting
+numpy
+pandas
+matplotlib
+pillow
+tqdm
+
+# Computer vision & detection
+opencv-python-headless        # headless build — avoids libGL issues on servers
+ultralytics                   # YOLO detector (ball / basket / person)
+supervision                   # detection & tracking utilities
+filterpy                      # Kalman filtering (ball)
+
+# OCR (jersey numbers + scoreboard)
+# PaddleOCR pulls in PaddlePaddle. For GPU, install the matching paddlepaddle-gpu
+# wheel for your CUDA version FIRST (see README), then:
+paddleocr
+
+# Presentation deck generation
+python-pptx
+
+# Note: ffmpeg (system package) is required for highlight clip cutting.
+#   Ubuntu/Debian:  sudo apt install ffmpeg
